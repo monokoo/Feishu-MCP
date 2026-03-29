@@ -4,7 +4,7 @@ export enum BlockType {
   PAGE = 1, TEXT = 2,
   H1 = 3, H2 = 4, H3 = 5, H4 = 6, H5 = 7, H6 = 8, H7 = 9, H8 = 10, H9 = 11,
   BULLET = 12, ORDERED = 13, CODE = 14, QUOTE = 15, DIVIDER = 16,
-  QUOTE_CONTAINER = 17, BITABLE = 18, JAVA_CODE = 22, QUOTE_ALT = 23,
+  QUOTE_CONTAINER = 17, BITABLE = 18, DIAGRAM = 21, JAVA_CODE = 22, QUOTE_ALT = 23,
   IMAGE = 27, MINDNOTE = 29, SHEET = 30, TABLE = 31, TABLE_CELL = 32, GRID = 33, GRID_COL = 34,
   ADD_ON = 40, WHITEBOARD = 43
 }
@@ -19,7 +19,7 @@ export interface FeishuBlock {
   heading5?: any; heading6?: any; heading7?: any; heading8?: any; heading9?: any;
   bullet?: any; ordered?: any; todo?: any; quote?: any;
   page?: any; table?: any; image?: any; code?: any; grid?: any; grid_col?: any;
-  table_cell?: any; sheet?: any; bitable?: any; whiteboard?: any; board?: any; add_on?: any; mindnote?: any;
+  table_cell?: any; sheet?: any; bitable?: any; whiteboard?: any; board?: any; add_on?: any; mindnote?: any; diagram?: any;
   [key: string]: any; // Allow extensibility but discourage usage
 }
 
@@ -206,6 +206,10 @@ export class BlockRenderer {
     if (bt === BlockType.MINDNOTE || block.mindnote) {
       const token = block.mindnote?.token || '';
       return `<mindnote token="${token}"/>`;
+    }
+    if (bt === BlockType.DIAGRAM || block.diagram) {
+      const diagramType = block.diagram?.diagram_type === 2 ? 'uml' : 'flowchart';
+      return `<diagram type="${diagramType}"/>`;
     }
 
     if (bt === BlockType.ADD_ON || block.add_on) {
