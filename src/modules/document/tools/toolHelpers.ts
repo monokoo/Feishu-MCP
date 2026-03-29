@@ -5,6 +5,7 @@ import { Logger } from '../../../utils/logger.js';
 import { BlockConfigSchema } from '../../../types/documentSchema.js';
 
 export const WHITEBOARD_NODE_THUMBNAIL_THRESHOLD = 200;
+export const WHITEBOARD_THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024; // 2MB
 export const BATCH_SIZE = 50;
 
 /** wiki 链接转换提示，在所有需要 documentId 的编辑类工具中复用 */

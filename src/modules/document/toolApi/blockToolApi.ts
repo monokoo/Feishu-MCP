@@ -9,6 +9,7 @@ import {
 } from '../../../types/documentSchema.js';
 import {
   WHITEBOARD_NODE_THUMBNAIL_THRESHOLD,
+  WHITEBOARD_THUMBNAIL_MAX_BYTES,
   BATCH_SIZE,
   prepareBlockContents,
   extractSpecialBlocks,
@@ -241,17 +242,35 @@ export type GetWhiteboardContentResult =
 
 export async function getWhiteboardContent(
   whiteboardId: string,
-  api: FeishuApiService
+  api: FeishuApiService,
+  format: 'json' | 'image' = 'json'
 ): Promise<GetWhiteboardContentResult> {
-  Logger.info(`getWhiteboardContent invoked: whiteboardId=${whiteboardId}`);
+  Logger.info(`getWhiteboardContent invoked: whiteboardId=${whiteboardId}, format=${format}`);
+
+  if (format === 'image') {
+    try {
+      const thumbnailBuffer = await api.getWhiteboardThumbnail(whiteboardId);
+      if (thumbnailBuffer.byteLength > WHITEBOARD_THUMBNAIL_MAX_BYTES) {
+        Logger.warn(`画板缩略图体积 ${(thumbnailBuffer.byteLength / 1024 / 1024).toFixed(1)}MB 超过上限，降级为 JSON`);
+      } else {
+        return { type: 'thumbnail', buffer: thumbnailBuffer };
+      }
+    } catch (err) {
+      Logger.warn(`获取画板图像失败，将降级抽取 JSON 结构数据: ${err}`);
+      // Fallback: continue fetching content JSON
+    }
+  }
 
   const whiteboardContent = await api.getWhiteboardContent(whiteboardId);
   const nodeCount = whiteboardContent.nodes?.length ?? 0;
 
-  if (nodeCount > WHITEBOARD_NODE_THUMBNAIL_THRESHOLD) {
+  if (format !== 'image' && nodeCount > WHITEBOARD_NODE_THUMBNAIL_THRESHOLD) {
     try {
       const thumbnailBuffer = await api.getWhiteboardThumbnail(whiteboardId);
-      return { type: 'thumbnail', buffer: thumbnailBuffer };
+      if (thumbnailBuffer.byteLength <= WHITEBOARD_THUMBNAIL_MAX_BYTES) {
+        return { type: 'thumbnail', buffer: thumbnailBuffer };
+      }
+      Logger.warn(`画板缩略图体积 ${(thumbnailBuffer.byteLength / 1024 / 1024).toFixed(1)}MB 超过上限，降级为 JSON`);
     } catch {
       // fallback to content
     }

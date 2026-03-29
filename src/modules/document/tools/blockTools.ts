@@ -28,6 +28,7 @@ import {
   TableCreateSchema,
   WhiteboardFillArraySchema,
   WhiteboardIdSchema,
+  WhiteboardFormatSchema,
 } from '../../../types/documentSchema.js';
 import { WIKI_NOTE, errorResponse } from './toolHelpers.js';
 
@@ -168,10 +169,11 @@ export function registerBlockTools(server: McpServer, feishuService: FeishuApiSe
     'Retrieves the content and structure of a Feishu whiteboard. Use this to analyze whiteboard content, extract information, or understand the structure of collaborative diagrams. The whiteboard ID can be obtained from the board.token field when getting document blocks with block_type: 43.',
     {
       whiteboardId: WhiteboardIdSchema,
+      format: WhiteboardFormatSchema,
     },
-    async ({ whiteboardId }) => {
+    async ({ whiteboardId, format }) => {
       try {
-        const result = await getWhiteboardContent(whiteboardId, feishuService);
+        const result = await getWhiteboardContent(whiteboardId, feishuService, format as 'json' | 'image');
         if (result.type === 'thumbnail') {
           return {
             content: [

@@ -345,6 +345,11 @@ export const WhiteboardIdSchema = z.string().describe(
   'Whiteboard token (required). Found in board.token of a block with block_type=43.\nExample: "EPJKwvY5ghe3pVbKj9RcT2msnBX"'
 );
 
+// 画板内容返回格式枚举
+export const WhiteboardFormatSchema = z.enum(['json', 'image']).optional().default('json').describe(
+  'Whiteboard output format (optional). Defaults to "json" which returns the original structured nodes topology. Pass "image" to explicitly request a high-fidelity image base64 snapshot of the whiteboard instead.'
+);
+
 // 画板代码参数定义（支持 PlantUML 和 Mermaid）
 export const WhiteboardCodeSchema = z.string().describe(
   'Diagram code (required). The complete diagram code to create in the whiteboard.\n' +
