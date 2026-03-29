@@ -6,7 +6,7 @@ export enum BlockType {
   BULLET = 12, ORDERED = 13, CODE = 14, QUOTE = 15, DIVIDER = 16,
   QUOTE_CONTAINER = 17, JAVA_CODE = 22, QUOTE_ALT = 23,
   IMAGE = 27, TABLE = 31, TABLE_CELL = 32, GRID = 33, GRID_COL = 34,
-  ADD_ON = 40, WHITEBOARD = 43
+  ADD_ON = 40, WHITEBOARD = 43, MINDNOTE = 29
 }
 
 export interface FeishuBlock {
@@ -19,7 +19,7 @@ export interface FeishuBlock {
   heading5?: any; heading6?: any; heading7?: any; heading8?: any; heading9?: any;
   bullet?: any; ordered?: any; todo?: any; quote?: any;
   page?: any; table?: any; image?: any; code?: any; grid?: any; grid_col?: any;
-  table_cell?: any; sheet?: any; bitable?: any; whiteboard?: any; add_on?: any;
+  table_cell?: any; sheet?: any; bitable?: any; whiteboard?: any; board?: any; add_on?: any; mindnote?: any;
   [key: string]: any; // Allow extensibility but discourage usage
 }
 
@@ -193,7 +193,14 @@ export class BlockRenderer {
 
     if (block.sheet) return `<sheet token="${block.sheet.token || ''}"/>`;
     if (block.bitable) return `<bitable token="${block.bitable.token || ''}"/>`;
-    if (bt === BlockType.WHITEBOARD || block.whiteboard) return `<whiteboard token="${block.whiteboard?.token || ''}"/>`;
+    if (bt === BlockType.WHITEBOARD || block.board || block.whiteboard) {
+      const token = block.board?.token || block.whiteboard?.token || '';
+      return `<whiteboard token="${token}"/>`;
+    }
+    if (bt === BlockType.MINDNOTE || block.mindnote) {
+      const token = block.mindnote?.token || '';
+      return `<mindnote token="${token}"/>`;
+    }
 
     if (bt === BlockType.ADD_ON || block.add_on) {
       const children = block.children || [];
