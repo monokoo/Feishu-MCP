@@ -4,9 +4,9 @@ export enum BlockType {
   PAGE = 1, TEXT = 2,
   H1 = 3, H2 = 4, H3 = 5, H4 = 6, H5 = 7, H6 = 8, H7 = 9, H8 = 10, H9 = 11,
   BULLET = 12, ORDERED = 13, CODE = 14, QUOTE = 15, DIVIDER = 16,
-  QUOTE_CONTAINER = 17, JAVA_CODE = 22, QUOTE_ALT = 23,
-  IMAGE = 27, TABLE = 31, TABLE_CELL = 32, GRID = 33, GRID_COL = 34,
-  ADD_ON = 40, WHITEBOARD = 43, MINDNOTE = 29
+  QUOTE_CONTAINER = 17, BITABLE = 18, JAVA_CODE = 22, QUOTE_ALT = 23,
+  IMAGE = 27, MINDNOTE = 29, SHEET = 30, TABLE = 31, TABLE_CELL = 32, GRID = 33, GRID_COL = 34,
+  ADD_ON = 40, WHITEBOARD = 43
 }
 
 export interface FeishuBlock {
@@ -191,8 +191,14 @@ export class BlockRenderer {
       return null;
     }
 
-    if (block.sheet) return `<sheet token="${block.sheet.token || ''}"/>`;
-    if (block.bitable) return `<bitable token="${block.bitable.token || ''}"/>`;
+    if (bt === BlockType.SHEET || block.sheet) {
+      const token = block.sheet?.token || '';
+      return `<sheet token="${token}"/>`;
+    }
+    if (bt === BlockType.BITABLE || block.bitable) {
+      const token = block.bitable?.token || '';
+      return `<bitable token="${token}"/>`;
+    }
     if (bt === BlockType.WHITEBOARD || block.board || block.whiteboard) {
       const token = block.board?.token || block.whiteboard?.token || '';
       return `<whiteboard token="${token}"/>`;
