@@ -78,6 +78,67 @@ export async function getDocumentBlocks(documentId: string, api: FeishuApiServic
   return appendSpecialBlockTextHints(JSON.stringify(blocks, null, 2), imageBlocks, whiteboardBlocks);
 }
 
+/**
+ * 获取飞书文档并渲染为极简 Markdown 格式
+ */
+import { BlockRenderer, RenderResult } from '../utils/markdownRenderer.js';
+
+const MAX_MARKDOWN_LENGTH = 200000; // 200K chars threshold
+const TRUNCATED_WARNING_MSG = `\n\n... [CONTENT TRUNCATED FOR SAFETY > ${MAX_MARKDOWN_LENGTH} chars] ...`;
+const MSG_SUCCESS = "Document rendered from blocks successfully";
+const MSG_SUCCESS_TRUNCATED = "Document rendered from blocks successfully (Truncated for safety)";
+
+export async function getFeishuDocumentMarkdown(documentId: string, api: FeishuApiService): Promise<string> {
+  // P3: 降级全量 Info 日志，防止并发刷屏
+  Logger.debug(`getFeishuDocumentMarkdown invoked: documentId=${documentId}`);
+
+  try {
+    const blocks = await api.getDocumentBlocks(documentId);
+    
+    // P2: 防御缺陷：缺失外源空数据拦截
+    if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
+      Logger.warn(`No valid blocks returned for documentId=${documentId}`);
+      return JSON.stringify({
+        doc_id: documentId,
+        title: "Unknown",
+        length: 0,
+        markdown: "",
+        message: "Empty document or no accessible blocks returned"
+      }, null, 2);
+    }
+  
+    // P1: 健壮性风险：渲染入口补充全局异常捕获
+    const renderer = new BlockRenderer(blocks);
+    const result: RenderResult = renderer.render();
+
+    // 防洪截断机制：应对远超负载异常大小文档的自我防御
+    let md = result.markdown;
+    if (md.length > MAX_MARKDOWN_LENGTH) {
+      Logger.warn(`Document ${documentId} is too large (${md.length} chars), aggressively truncating at threshold.`);
+      md = md.substring(0, MAX_MARKDOWN_LENGTH) + TRUNCATED_WARNING_MSG;
+    }
+
+    // 返回格式化的 JSON 字符串（包含元数据和 markdown 内容）
+    return JSON.stringify({
+      doc_id: result.doc_id,
+      title: result.title,
+      length: md.length,
+      markdown: md,
+      message: md.length < result.length ? MSG_SUCCESS_TRUNCATED : MSG_SUCCESS
+    }, null, 2);
+  } catch (error) {
+    Logger.error(`Error rendering markdown for documentId=${documentId}:`, error);
+    // 核心保护：返回兜底占位结构，避免 MCP 宿主崩溃
+    return JSON.stringify({
+      doc_id: documentId,
+      title: "Error",
+      length: 0,
+      markdown: `> **[System Protection]** 无法成功渲染此飞书文档。\n\n**Renderer Exception:** ${(error as Error).message}`,
+      message: "A critical error occurred during Markdown rendering"
+    }, null, 2);
+  }
+}
+
 export interface SearchDocumentsParams {
   searchKey: string;
   searchType?: 'document' | 'wiki' | 'both';

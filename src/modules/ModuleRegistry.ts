@@ -20,7 +20,6 @@ const IMPLICIT_DEPS: Record<string, string[]> = {
   calendar: ['member'],
 };
 
-/** 仅 user 认证支持的模块（tenant 模式下不加载） */
 const USER_ONLY_MODULES = new Set<string>(['task', 'calendar', 'member']);
 
 /**

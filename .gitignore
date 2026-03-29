@@ -42,3 +42,8 @@ scripts
 .cursor
 .npmrc
 commit-msg
+.gitnexus/
+.claude/
+.planning/
+AGENTS.md
+CLAUDE.md

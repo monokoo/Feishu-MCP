@@ -164,7 +164,7 @@ export class FeishuScopeValidator {
       return;
     }
 
-    Logger.info(`开始校验scope权限，版本: ${scopeVersion}, 有效模块: ${effectiveModules.join(', ')}`);
+    Logger.info(`开始校验scope权限，版本: ${scopeVersion}, 权限模块: ${effectiveModules.join(', ')}`);
 
     try {
       const tempTenantToken = await this.getTempTenantTokenForScope(appId, appSecret);

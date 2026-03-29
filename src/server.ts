@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { Server } from 'http';
+import { Server, createServer } from 'http';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -323,12 +323,9 @@ export class FeishuMcpServer {
     app.get('/callback', callback);
 
     return new Promise((resolve, reject) => {
-      const server = app.listen(port, '0.0.0.0', () => {
-        this.callbackServer = server;
-        Logger.info(`Callback server listening on port ${port}`);
-        Logger.info(`Callback endpoint available at http://localhost:${port}/callback`);
-        resolve();
-      });
+      // 先创建 http.Server，绑定 error handler，再调用 listen()
+      // 避免 Node v25+ 中 listen() 与 on('error') 的时序竞态
+      const server = createServer(app);
 
       server.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
@@ -339,6 +336,13 @@ export class FeishuMcpServer {
         } else {
           reject(err);
         }
+      });
+
+      server.listen(port, '0.0.0.0', () => {
+        this.callbackServer = server;
+        Logger.info(`Callback server listening on port ${port}`);
+        Logger.info(`Callback endpoint available at http://localhost:${port}/callback`);
+        resolve();
       });
     });
   }

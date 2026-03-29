@@ -16,24 +16,21 @@ export const MODULE_SCOPES: Record<string, { tenant: string[]; userOnly: string[
       "docx:document",
       "docx:document:create",
       "docx:document:readonly",
-      "drive:drive",
-      "drive:drive:readonly",
-      "drive:file",
+      "drive:drive.search:readonly",
       "drive:file:upload",
       "sheets:spreadsheet",
       "sheets:spreadsheet:readonly",
-      "space:document:retrieve",
       "space:folder:create",
       "wiki:space:read",
-      "wiki:space:retrieve",
       "wiki:wiki",
       "wiki:wiki:readonly",
     ],
     userOnly: [
-      "search:docs:read",
+      "drive:drive.search:readonly",
       "offline_access",
     ],
   },
+
   task: {
     tenant: [
       "task:task:write",
@@ -72,9 +69,12 @@ export const MODULE_SCOPES: Record<string, { tenant: string[]; userOnly: string[
   },
 };
 
+/** 核心的 Loadable Modules（物理模块），用于 'all' 展开，避免展开包含 profile 别名 */
+export const CORE_MODULES = ['document', 'task', 'calendar', 'member'];
+
 /**
  * 根据已启用模块和认证类型，计算所需的最小 Scope 集合
- * @param enabledModules 已启用的模块 ID 列表（含 'all' 则返回全量）
+ * @param enabledModules 已启用的模块/配置 Profile 列表（含 'all' 则返回核心模块全量）
  * @param authType 认证类型
  */
 export function getRequiredScopes(
@@ -82,7 +82,7 @@ export function getRequiredScopes(
   authType: 'tenant' | 'user'
 ): string[] {
   const moduleIds = enabledModules.includes('all')
-    ? Object.keys(MODULE_SCOPES)
+    ? CORE_MODULES
     : enabledModules;
 
   const scopes = new Set<string>();

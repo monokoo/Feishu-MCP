@@ -7,6 +7,7 @@ import {
   getDocumentInfo,
   getDocumentBlocks,
   searchDocuments,
+  getFeishuDocumentMarkdown,
 } from '../toolApi/documentToolApi.js';
 import {
   WIKI_NOTE,
@@ -79,6 +80,23 @@ export function registerDocumentTools(server: McpServer, feishuService: FeishuAp
       } catch (error) {
         Logger.error(`获取飞书文档块失败:`, error);
         return errorResponse(`获取飞书文档块失败: ${formatErrorMessage(error)}`);
+      }
+    }
+  );
+
+  server.tool(
+    'get_feishu_document_markdown',
+    'Retrieves a Feishu document and converts it directly into a clean, LLM-friendly Markdown format. This is the strongly recommended way to read document content for AI, as it avoids raw JSON bloat and token overflows. ' + WIKI_NOTE,
+    {
+      documentId: DocumentIdSchema,
+    },
+    async ({ documentId }) => {
+      try {
+        const responseText = await getFeishuDocumentMarkdown(documentId, feishuService);
+        return { content: [{ type: 'text', text: responseText }] };
+      } catch (error) {
+        Logger.error(`获取飞书文档 Markdown 失败:`, error);
+        return errorResponse(`获取飞书文档 Markdown 失败: ${formatErrorMessage(error)}`);
       }
     }
   );
