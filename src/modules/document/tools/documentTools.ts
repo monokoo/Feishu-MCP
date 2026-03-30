@@ -8,6 +8,7 @@ import {
   getDocumentBlocks,
   searchDocuments,
   getFeishuDocumentMarkdown,
+  getDocumentComments,
 } from '../toolApi/documentToolApi.js';
 import {
   WIKI_NOTE,
@@ -24,6 +25,8 @@ import {
   DocumentTitleSchema,
   FolderTokenOptionalSchema,
   WikiSpaceNodeContextSchema,
+  FileTokenSchema,
+  FileTypeSchema,
 } from '../../../types/documentSchema.js';
 
 /**
@@ -120,6 +123,24 @@ export function registerDocumentTools(server: McpServer, feishuService: FeishuAp
       } catch (error) {
         Logger.error(`搜索失败:`, error);
         return errorResponse(`搜索失败: ${formatErrorMessage(error)}`);
+      }
+    }
+  );
+
+  server.tool(
+    'get_feishu_document_comments',
+    'Retrieves comments and inline replies from a Feishu cloud document in a single call, rendered as AI-friendly Markdown. Automatically paginates through all comments and extracts first-level inline replies (Note: to avoid API rate limits, deeply nested or extremely long reply threads beyond the inline limit are not fully paginated). Output includes quoted text, commenter names, timestamps, and resolved status. Ideal for reviewing PRD feedback, design comments, and collaboration discussions.',
+    {
+      fileToken: FileTokenSchema,
+      fileType: FileTypeSchema,
+    },
+    async ({ fileToken, fileType }) => {
+      try {
+        const result = await getDocumentComments({ fileToken, fileType }, feishuService);
+        return { content: [{ type: 'text', text: result }] };
+      } catch (error) {
+        Logger.error(`获取飞书文档评论失败:`, error);
+        return errorResponse(`获取飞书文档评论失败: ${formatErrorMessage(error)}`);
       }
     }
   );

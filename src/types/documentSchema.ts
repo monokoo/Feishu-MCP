@@ -378,3 +378,14 @@ export const WhiteboardFillArraySchema = z.array(WhiteboardContentSchema).descri
 
 // 文档标题参数定义
 export const DocumentTitleSchema = z.string().describe('Document title (required). This will be displayed in the Feishu document list and document header.');
+
+// 文件 Token 参数定义（用于评论等云文档 API）
+export const FileTokenSchema = z.string().describe(
+  'File token or URL (required). The token of the cloud document to query comments for.\n' +
+  'Supports: direct token (e.g., "JcKbdlokYoPIe0xDzJ1cduRXnRf") or Feishu document URL.'
+);
+
+// 文件类型参数定义
+export const FileTypeSchema = z.enum(['doc', 'docx', 'sheet', 'bitable']).default('docx').describe(
+  'File type (optional). Default: "docx". Possible values: doc, docx, sheet, bitable.'
+);

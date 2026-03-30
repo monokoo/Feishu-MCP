@@ -3,11 +3,14 @@ export {
   getDocumentInfo,
   getDocumentBlocks,
   searchDocuments,
+  getDocumentComments,
+  getFeishuDocumentMarkdown,
 } from './documentToolApi.js';
 export type {
   CreateDocumentParams,
   GetDocumentInfoParams,
   SearchDocumentsParams,
+  GetDocumentCommentsParams,
 } from './documentToolApi.js';
 
 export {

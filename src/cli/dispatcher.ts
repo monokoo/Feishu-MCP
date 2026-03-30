@@ -20,6 +20,8 @@ import {
   getRootFolderInfo,
   getFolderFiles,
   createFolder,
+  getDocumentComments,
+  getFeishuDocumentMarkdown,
 } from '../modules/document/toolApi/index.js';
 
 // Task toolApis
@@ -83,6 +85,8 @@ const MODULE_REGISTRY: Record<string, ModuleToolMap> = {
       get_feishu_root_folder_info:    (_p, s) => getRootFolderInfo(s),
       get_feishu_folder_files:        (p, s) => getFolderFiles(p, s),
       create_feishu_folder:           (p, s) => createFolder(p, s),
+      get_feishu_document_comments:   (p, s) => getDocumentComments(p, s),
+      get_feishu_document_markdown:   (p, s) => getFeishuDocumentMarkdown(p.documentId, s),
     },
   },
 

@@ -5,6 +5,7 @@ import { FeishuBlockService } from '../modules/document/services/FeishuBlockServ
 import { FeishuFoldService } from '../modules/document/services/FeishuFoldService.js';
 import { FeishuSearchService } from '../modules/document/services/FeishuSearchService.js';
 import { FeishuWhiteboardService } from '../modules/document/services/FeishuWhiteboardService.js';
+import { FeishuCommentService } from '../modules/document/services/FeishuCommentService.js';
 import {
   FeishuTaskService,
   type CreateTaskParams,
@@ -43,6 +44,7 @@ export class FeishuApiService {
     private readonly foldService: FeishuFoldService,
     private readonly searchService: FeishuSearchService,
     private readonly whiteboardService: FeishuWhiteboardService,
+    private readonly commentService: FeishuCommentService,
     private readonly taskService: FeishuTaskService,
     private readonly calendarService: FeishuCalendarService,
     private readonly memberService: FeishuMemberService,
@@ -57,6 +59,7 @@ export class FeishuApiService {
     const foldService = new FeishuFoldService(authService);
     const searchService = new FeishuSearchService(authService);
     const whiteboardService = new FeishuWhiteboardService(authService);
+    const commentService = new FeishuCommentService(authService);
     const taskService = new FeishuTaskService(authService);
     const calendarService = new FeishuCalendarService(authService);
     const memberService = new FeishuMemberService(authService);
@@ -67,6 +70,7 @@ export class FeishuApiService {
       foldService,
       searchService,
       whiteboardService,
+      commentService,
       taskService,
       calendarService,
       memberService,
@@ -358,6 +362,21 @@ export class FeishuApiService {
   public async createDiagramNode(whiteboardId: string, code: string, syntaxType: number): Promise<any> {
     return this.whiteboardService.createDiagramNode(whiteboardId, code, syntaxType);
   }
+
+  // ─── 评论服务委托 ─────────────────────────────────────────────────
+
+  /**
+   * 自动分页拉取文档的全部评论
+   * @see FeishuCommentService.listAllComments
+   */
+  public async listAllComments(
+    fileToken: string,
+    fileType: string = 'docx',
+    pageSize: number = 50,
+  ): Promise<any[]> {
+    return this.commentService.listAllComments(fileToken, fileType, pageSize);
+  }
+
 
   // ─── 任务服务委托 ─────────────────────────────────────────────────
 

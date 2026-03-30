@@ -145,12 +145,10 @@ export abstract class BaseApiService {
         ...additionalHeaders
       };
 
-      // 如果数据是FormData，合并FormData的headers
-      // 否则设置为application/json
       if (data instanceof FormData) {
         Object.assign(headers, data.getHeaders());
       } else {
-        headers['Content-Type'] = 'application/json';
+        headers['Content-Type'] = 'application/json; charset=utf-8';
       }
       
       // 添加认证令牌
@@ -177,8 +175,41 @@ export abstract class BaseApiService {
         responseType: responseType || 'json'
       };
       
-      // 发送请求
-      const response = await axios<ApiResponse<T>>(config);
+      // 发送请求（支持 429 限流指数退避重试）
+      let response;
+      let retries = 0;
+      const MAX_RETRIES = 5;
+
+      while (true) {
+        try {
+          response = await axios<ApiResponse<T>>(config);
+          break; // 成功则跳出重试循环
+        } catch (err) {
+          if (err instanceof AxiosError && err.response && err.response.status === 429 && retries < MAX_RETRIES) {
+            const resetAfter = err.response.headers['x-ogw-ratelimit-reset'];
+            let waitTime = 1000;
+            if (resetAfter) {
+              const resetSec = parseInt(resetAfter, 10);
+              waitTime = (isNaN(resetSec) ? 1 : resetSec) * 1000;
+            } else {
+              // 指数退避：1s, 2s, 4s, 8s, 16s
+              waitTime = Math.pow(2, retries) * 1000;
+            }
+
+            // 防阻塞保护：如单次等待时间大于 10 秒，为了防止 MCP client 发生 "context deadline exceeded" 断联，直接阻断
+            if (waitTime > 10000) {
+               Logger.warn(`[BaseService] 触发 429 限流 (${endpoint})，系统要求等待 ${waitTime}ms，为防止 MCP 超时强制断开连接，已主动跳出重试。`);
+               throw new Error(`飞书 API 触发严格限流 (429 Too Many Requests)，平台要求等待 ${waitTime / 1000} 秒才能继续，请您稍后重试。`);
+            }
+
+            Logger.warn(`[BaseService] 触发 429 限流 (${endpoint})，等待 ${waitTime}ms 后进行第 ${retries + 1} 次重试 (基于: ${resetAfter ? 'x-ogw-ratelimit-reset' : '指数退避'})...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retries++;
+            continue;
+          }
+          throw err; // 非 429 或超过重试次数则直接抛出由外层处理
+        }
+      }
       
       // 记录响应信息
       Logger.debug('收到响应:');

@@ -6,6 +6,7 @@ export const MODULE_SCOPES: Record<string, { tenant: string[]; userOnly: string[
   document: {
     tenant: [
       "docx:document.block:convert",
+      "docs:document.comment:read",
       "base:app:read",
       "bitable:app",
       "bitable:app:readonly",

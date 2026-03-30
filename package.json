@@ -1,11 +1,13 @@
 {
   "name": "feishu-mcp",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Model Context Protocol server for Feishu integration",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "feishu-mcp": "./dist/cli/index.js"
+    "feishu-mcp": "./dist/cli.js",
+    "feishu-mcp-tool": "./dist/cli/index.js",
+    "feishu-tool": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -28,11 +30,11 @@
     "pub:test": "pnpm build && npm publish --tag test"
   },
   "engines": {
-    "node": "^20.17.0"
+    "node": ">=20.17.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cso1z/Feishu-MCP.git"
+    "url": "https://github.com/monokoo/Feishu-MCP.git"
   },
   "keywords": [
     "feishu",
@@ -40,7 +42,7 @@
     "mcp",
     "typescript"
   ],
-  "author": "cso1z",
+  "author": "monokoo",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",

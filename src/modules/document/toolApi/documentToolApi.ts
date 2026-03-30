@@ -1,6 +1,7 @@
 import { FeishuApiService } from '../../../services/feishuApiService.js';
 import { Logger } from '../../../utils/logger.js';
 import { extractSpecialBlocks, appendSpecialBlockTextHints } from '../tools/toolHelpers.js';
+import { normalizeDocumentId } from '../../../utils/document.js';
 
 export interface CreateDocumentParams {
   title: string;
@@ -155,4 +156,165 @@ export async function searchDocuments(params: SearchDocumentsParams, api: Feishu
   Logger.info(`searchDocuments invoked: searchKey=${searchKey}, type=${searchType}`);
 
   return api.search(searchKey, searchType, offset, pageToken);
+}
+
+// ─── 文档评论 ─────────────────────────────────────────────────────────
+
+const MAX_COMMENTS_LENGTH = 100000; // 100K chars threshold
+const COMMENTS_TRUNCATED_MSG = `\n\n... [评论内容已截断，超过 ${MAX_COMMENTS_LENGTH} 字符上限] ...`;
+
+export interface GetDocumentCommentsParams {
+  fileToken: string;
+  fileType?: string;
+}
+
+/**
+ * 拉取文档全部评论及回复，渲染为 AI 友好的 Markdown 格式
+ */
+export async function getDocumentComments(
+  params: GetDocumentCommentsParams,
+  api: FeishuApiService,
+): Promise<string> {
+  const { fileToken: rawToken, fileType = 'docx' } = params;
+
+  // URL → Token 归一化（兼容用户直接传入飞书文档 URL）
+  let fileToken: string;
+  try {
+    fileToken = normalizeDocumentId(rawToken);
+  } catch {
+    // 如果归一化失败（如非标准格式），保留原值交给 API 层处理
+    fileToken = rawToken;
+  }
+
+  Logger.info(`getDocumentComments invoked: fileToken=${fileToken}, fileType=${fileType}`);
+
+  const comments = await api.listAllComments(fileToken, fileType);
+
+  if (!comments || comments.length === 0) {
+    return JSON.stringify({
+      file_token: fileToken,
+      total_comments: 0,
+      markdown: '> 该文档暂无评论。',
+      message: 'No comments found',
+    }, null, 2);
+  }
+
+  // 直接从主接口返回的 reply_list 中提取内联回复（无需额外调用 /replies 接口）
+  const commentsWithReplies: Array<{ comment: any; replies: any[] }> = comments.map(comment => ({
+    comment,
+    replies: comment.reply_list?.replies ?? [],
+  }));
+
+  // 渲染为 Markdown
+  let md = `# 文档评论 (共 ${commentsWithReplies.length} 条)\n`;
+
+  for (let i = 0; i < commentsWithReplies.length; i++) {
+    const { comment, replies } = commentsWithReplies[i];
+    const resolved = comment.is_solved ?? false;
+    const statusTag = resolved ? ' (已解决 ✅)' : '';
+
+    md += `\n---\n### 评论 #${i + 1}${statusTag}\n`;
+
+    // 引用的文档原文
+    const quote = extractQuoteText(comment);
+    if (quote) {
+      md += `> **引用：** ${quote}\n\n`;
+    }
+
+    // 主评论内容
+    const mainContent = extractCommentContent(comment);
+    const mainUser = extractUserName(comment);
+    const mainTime = formatTimestamp(comment.create_time);
+    md += `**${mainUser}** (${mainTime}):\n${mainContent}\n`;
+
+    // 回复列表
+    for (const reply of replies) {
+      // 跳过与主评论相同的第一条回复（部分 API 把主评论也列入 replies）
+      if (reply.reply_id === comment.comment_id) continue;
+
+      const replyUser = extractUserName(reply);
+      const replyTime = formatTimestamp(reply.create_time);
+      const replyContent = extractCommentContent(reply);
+      md += `\n  ↳ **${replyUser}** (${replyTime}):\n  ${replyContent}\n`;
+    }
+  }
+
+  // 防洪截断
+  if (md.length > MAX_COMMENTS_LENGTH) {
+    Logger.warn(`评论内容过长(${md.length}字符)，截断至 ${MAX_COMMENTS_LENGTH}`);
+    md = md.substring(0, MAX_COMMENTS_LENGTH) + COMMENTS_TRUNCATED_MSG;
+  }
+
+  return JSON.stringify({
+    file_token: fileToken,
+    total_comments: commentsWithReplies.length,
+    markdown: md,
+    message: md.length < MAX_COMMENTS_LENGTH
+      ? 'Comments retrieved successfully'
+      : 'Comments retrieved (truncated for safety)',
+  }, null, 2);
+}
+
+// ─── 评论解析辅助函数 ─────────────────────────────────────────────────
+
+/** 从评论对象中提取引用的原文内容 */
+function extractQuoteText(comment: any): string {
+  return comment.quote ?? '';
+}
+
+/** 从评论/回复对象中提取文本内容 */
+function extractCommentContent(item: any): string {
+  let contentObj = item.content;
+  if (!contentObj) return '[空文本]';
+
+  // 飞书接口中 content 经常是一个序列化后的 JSON 字符串
+  if (typeof contentObj === 'string') {
+    try {
+      contentObj = JSON.parse(contentObj);
+    } catch {
+      // 解析失败直接当普通纯文本使用
+      return contentObj;
+    }
+  }
+
+  // 飞书评论内容存储在 content.elements 中，每个 element 有 type 和 text_run 等
+  const elements = contentObj?.elements;
+  if (!elements || !Array.isArray(elements)) {
+    if (typeof contentObj === 'string') return contentObj;
+    return typeof contentObj === 'object' ? JSON.stringify(contentObj) : '[无法解析评论内容]';
+  }
+
+  return elements
+    .map((el: any) => {
+      if (el.type === 'text_run') return el.text_run?.text ?? '';
+      if (el.type === 'docs_link') return `[链接](${el.docs_link?.url ?? ''})`;
+      if (el.type === 'person') return `@${el.person?.user_id ?? '用户'}`;
+      return '';
+    })
+    .join('')
+    .trim() || '[空评论]';
+}
+
+/** 从评论/回复中提取用户名 */
+function extractUserName(item: any): string {
+  const name = item.user_name ?? item.user?.name;
+  if (name) return name;
+  const userId = item.user_id;
+  if (userId) return `用户ID: ${userId}`;
+  return '未知用户';
+}
+
+/** 将秒级时间戳格式化为可读时间 */
+function formatTimestamp(ts: any): string {
+  if (!ts) return '未知时间';
+  const n = typeof ts === 'string' ? parseInt(ts, 10) : ts;
+  if (isNaN(n)) return '未知时间';
+  // 飞书返回秒级时间戳
+  const date = new Date(n * 1000);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d} ${h}:${min}`;
 }
